@@ -38,6 +38,9 @@ using System.Linq;
 using Xunit;
 using NLog.Common;
 using System.Text;
+#if !SILVERLIGHT 
+using Xunit.Extensions;
+#endif
 
 namespace NLog.UnitTests.Common
 {
@@ -88,42 +91,45 @@ namespace NLog.UnitTests.Common
 
             InternalLogger.LogLevel = LogLevel.Trace;
             InternalLogger.IncludeTimestamp = false;
-
-            StringWriter writer1 = new StringWriter()
             {
-                NewLine = "\n"
-            };
-            InternalLogger.LogWriter = writer1;
+                StringWriter writer1 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                InternalLogger.LogWriter = writer1;
 
-            // Named (based on LogLevel) public methods.
-            InternalLogger.Warn("WWW");
-            InternalLogger.Error("EEE");
-            InternalLogger.Fatal("FFF");
-            InternalLogger.Trace("TTT");
-            InternalLogger.Debug("DDD");
-            InternalLogger.Info("III");
+                // Named (based on LogLevel) public methods.
+                InternalLogger.Warn("WWW");
+                InternalLogger.Error("EEE");
+                InternalLogger.Fatal("FFF");
+                InternalLogger.Trace("TTT");
+                InternalLogger.Debug("DDD");
+                InternalLogger.Info("III");
 
-            Assert.True(writer1.ToString() == expected);
-
-            //
-            // Reconfigure the LogWriter.
-
-            StringWriter writer2 = new StringWriter()
+                TestWriter(expected, writer1);
+            }
             {
-                NewLine = "\n"
-            };
-            InternalLogger.LogWriter = writer2;
+                //
+                // Reconfigure the LogWriter.
 
-            // Invoke Log(LogLevel, string) for every log level.
-            InternalLogger.Log(LogLevel.Warn, "WWW");
-            InternalLogger.Log(LogLevel.Error, "EEE");
-            InternalLogger.Log(LogLevel.Fatal, "FFF");
-            InternalLogger.Log(LogLevel.Trace, "TTT");
-            InternalLogger.Log(LogLevel.Debug, "DDD");
-            InternalLogger.Log(LogLevel.Info, "III");
+                StringWriter writer2 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                InternalLogger.LogWriter = writer2;
 
-            Assert.True(writer2.ToString() == expected);
+                // Invoke Log(LogLevel, string) for every log level.
+                InternalLogger.Log(LogLevel.Warn, "WWW");
+                InternalLogger.Log(LogLevel.Error, "EEE");
+                InternalLogger.Log(LogLevel.Fatal, "FFF");
+                InternalLogger.Log(LogLevel.Trace, "TTT");
+                InternalLogger.Log(LogLevel.Debug, "DDD");
+                InternalLogger.Log(LogLevel.Info, "III");
+
+                TestWriter(expected, writer2);
+            }
         }
+
 
         [Fact]
         public void WriteToStringWriterWithArgsTests()
@@ -133,41 +139,55 @@ namespace NLog.UnitTests.Common
 
             InternalLogger.LogLevel = LogLevel.Trace;
             InternalLogger.IncludeTimestamp = false;
-
-            StringWriter writer1 = new StringWriter()
             {
-                NewLine = "\n"
-            };
-            InternalLogger.LogWriter = writer1;
+                StringWriter writer1 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                InternalLogger.LogWriter = writer1;
 
-            // Named (based on LogLevel) public methods.
-            InternalLogger.Warn("WWW {0}", 0);
-            InternalLogger.Error("EEE {0}, {1}", 0, 1);
-            InternalLogger.Fatal("FFF {0}, {1}, {2}", 0, 1, 2);
-            InternalLogger.Trace("TTT {0}, {1}, {2}", 0, 1, 2);
-            InternalLogger.Debug("DDD {0}, {1}", 0, 1);
-            InternalLogger.Info("III {0}", 0);
+                // Named (based on LogLevel) public methods.
+                InternalLogger.Warn("WWW {0}", 0);
+                InternalLogger.Error("EEE {0}, {1}", 0, 1);
+                InternalLogger.Fatal("FFF {0}, {1}, {2}", 0, 1, 2);
+                InternalLogger.Trace("TTT {0}, {1}, {2}", 0, 1, 2);
+                InternalLogger.Debug("DDD {0}, {1}", 0, 1);
+                InternalLogger.Info("III {0}", 0);
 
-            Assert.True(writer1.ToString() == expected);
-
-            //
-            // Reconfigure the LogWriter.
-
-            StringWriter writer2 = new StringWriter()
+                TestWriter(expected, writer1);
+            }
             {
-                NewLine = "\n"
-            };
-            InternalLogger.LogWriter = writer2;
+                //
+                // Reconfigure the LogWriter.
 
-            // Invoke Log(LogLevel, string) for every log level.
-            InternalLogger.Log(LogLevel.Warn, "WWW {0}", 0);
-            InternalLogger.Log(LogLevel.Error, "EEE {0}, {1}", 0, 1);
-            InternalLogger.Log(LogLevel.Fatal, "FFF {0}, {1}, {2}", 0, 1, 2);
-            InternalLogger.Log(LogLevel.Trace, "TTT {0}, {1}, {2}", 0, 1, 2);
-            InternalLogger.Log(LogLevel.Debug, "DDD {0}, {1}", 0, 1);
-            InternalLogger.Log(LogLevel.Info, "III {0}", 0);
+                StringWriter writer2 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                InternalLogger.LogWriter = writer2;
 
-            Assert.True(writer2.ToString() == expected);
+                // Invoke Log(LogLevel, string) for every log level.
+                InternalLogger.Log(LogLevel.Warn, "WWW {0}", 0);
+                InternalLogger.Log(LogLevel.Error, "EEE {0}, {1}", 0, 1);
+                InternalLogger.Log(LogLevel.Fatal, "FFF {0}, {1}, {2}", 0, 1, 2);
+                InternalLogger.Log(LogLevel.Trace, "TTT {0}, {1}, {2}", 0, 1, 2);
+                InternalLogger.Log(LogLevel.Debug, "DDD {0}, {1}", 0, 1);
+                InternalLogger.Log(LogLevel.Info, "III {0}", 0);
+                TestWriter(expected, writer2);
+            }
+
+        }
+
+        /// <summary>
+        /// Test output van een textwriter
+        /// </summary>
+        /// <param name="expected"></param>
+        /// <param name="writer"></param>
+        private static void TestWriter(string expected, StringWriter writer)
+        {
+            writer.Flush();
+            var writerOutput = writer.ToString();
+            Assert.Equal(expected, writerOutput);
         }
 
 #if !SILVERLIGHT
@@ -181,47 +201,51 @@ namespace NLog.UnitTests.Common
             InternalLogger.IncludeTimestamp = false;
             InternalLogger.LogToConsole = true;
 
-            StringWriter consoleOutWriter1 = new StringWriter()
             {
-                NewLine = "\n"
-            };
+                StringWriter consoleOutWriter1 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
 
-            // Redirect the console output to a StringWriter.
-            Console.SetOut(consoleOutWriter1);
+                // Redirect the console output to a StringWriter.
+                Console.SetOut(consoleOutWriter1);
 
-            // Named (based on LogLevel) public methods.
-            InternalLogger.Warn("WWW");
-            InternalLogger.Error("EEE");
-            InternalLogger.Fatal("FFF");
-            InternalLogger.Trace("TTT");
-            InternalLogger.Debug("DDD");
-            InternalLogger.Info("III");
+                // Named (based on LogLevel) public methods.
+                InternalLogger.Warn("WWW");
+                InternalLogger.Error("EEE");
+                InternalLogger.Fatal("FFF");
+                InternalLogger.Trace("TTT");
+                InternalLogger.Debug("DDD");
+                InternalLogger.Info("III");
 
-            Assert.True(consoleOutWriter1.ToString() == expected);
+                TestWriter(expected, consoleOutWriter1);
+            }
 
             //
             // Redirect the console output to another StringWriter.
-
-            StringWriter consoleOutWriter2 = new StringWriter()
             {
-                NewLine = "\n"
-            };
-            Console.SetOut(consoleOutWriter2);
+                StringWriter consoleOutWriter2 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                Console.SetOut(consoleOutWriter2);
 
-            // Invoke Log(LogLevel, string) for every log level.
-            InternalLogger.Log(LogLevel.Warn, "WWW");
-            InternalLogger.Log(LogLevel.Error, "EEE");
-            InternalLogger.Log(LogLevel.Fatal, "FFF");
-            InternalLogger.Log(LogLevel.Trace, "TTT");
-            InternalLogger.Log(LogLevel.Debug, "DDD");
-            InternalLogger.Log(LogLevel.Info, "III");
+                // Invoke Log(LogLevel, string) for every log level.
+                InternalLogger.Log(LogLevel.Warn, "WWW");
+                InternalLogger.Log(LogLevel.Error, "EEE");
+                InternalLogger.Log(LogLevel.Fatal, "FFF");
+                InternalLogger.Log(LogLevel.Trace, "TTT");
+                InternalLogger.Log(LogLevel.Debug, "DDD");
+                InternalLogger.Log(LogLevel.Info, "III");
 
-            Assert.True(consoleOutWriter2.ToString() == expected);
+                TestWriter(expected, consoleOutWriter2);
+            }
         }
 
         [Fact]
         public void WriteToConsoleErrorTests()
         {
+
             // Expected result is the same for both types of method invocation.
             const string expected = "Warn WWW\nError EEE\nFatal FFF\nTrace TTT\nDebug DDD\nInfo III\n";
 
@@ -229,42 +253,45 @@ namespace NLog.UnitTests.Common
             InternalLogger.IncludeTimestamp = false;
             InternalLogger.LogToConsoleError = true;
 
-            StringWriter consoleWriter1 = new StringWriter()
             {
-                NewLine = "\n"
-            };
+                StringWriter consoleWriter1 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
 
-            // Redirect the console output to a StringWriter.
-            Console.SetError(consoleWriter1);
+                // Redirect the console output to a StringWriter.
+                Console.SetError(consoleWriter1);
 
-            // Named (based on LogLevel) public methods.
-            InternalLogger.Warn("WWW");
-            InternalLogger.Error("EEE");
-            InternalLogger.Fatal("FFF");
-            InternalLogger.Trace("TTT");
-            InternalLogger.Debug("DDD");
-            InternalLogger.Info("III");
+                // Named (based on LogLevel) public methods.
+                InternalLogger.Warn("WWW");
+                InternalLogger.Error("EEE");
+                InternalLogger.Fatal("FFF");
+                InternalLogger.Trace("TTT");
+                InternalLogger.Debug("DDD");
+                InternalLogger.Info("III");
 
-            Assert.True(consoleWriter1.ToString() == expected);
+                TestWriter(expected, consoleWriter1);
+            }
 
-            //
-            // Redirect the console output to another StringWriter.
-
-            StringWriter consoleWriter2 = new StringWriter()
             {
-                NewLine = "\n"
-            };
-            Console.SetError(consoleWriter2);
+                //
+                // Redirect the console output to another StringWriter.
 
-            // Invoke Log(LogLevel, string) for every log level.
-            InternalLogger.Log(LogLevel.Warn, "WWW");
-            InternalLogger.Log(LogLevel.Error, "EEE");
-            InternalLogger.Log(LogLevel.Fatal, "FFF");
-            InternalLogger.Log(LogLevel.Trace, "TTT");
-            InternalLogger.Log(LogLevel.Debug, "DDD");
-            InternalLogger.Log(LogLevel.Info, "III");
+                StringWriter consoleWriter2 = new StringWriter()
+                {
+                    NewLine = "\n"
+                };
+                Console.SetError(consoleWriter2);
 
-            Assert.True(consoleWriter2.ToString() == expected);
+                // Invoke Log(LogLevel, string) for every log level.
+                InternalLogger.Log(LogLevel.Warn, "WWW");
+                InternalLogger.Log(LogLevel.Error, "EEE");
+                InternalLogger.Log(LogLevel.Fatal, "FFF");
+                InternalLogger.Log(LogLevel.Trace, "TTT");
+                InternalLogger.Log(LogLevel.Debug, "DDD");
+                InternalLogger.Log(LogLevel.Info, "III");
+                TestWriter(expected, consoleWriter2);
+            }
         }
 
         [Fact]
@@ -345,8 +372,6 @@ namespace NLog.UnitTests.Common
         {
             using (new InternalLoggerScope())
             {
-
-
                 InternalLogger.LogLevel = LogLevel.Trace;
                 InternalLogger.LogToConsole = true;
                 InternalLogger.IncludeTimestamp = false;
@@ -392,56 +417,45 @@ namespace NLog.UnitTests.Common
 
         }
 
-
-        [Fact]
-        public void CreateDirectoriesIfNeededTests()
+        [Theory]
+        [InlineData("trace", true)]
+        [InlineData("debug", true)]
+        [InlineData("info", true)]
+        [InlineData("warn", true)]
+        [InlineData("error", true)]
+        [InlineData("fatal", true)]
+        [InlineData("off", false)]
+        public void CreateDirectoriesIfNeededTests(string rawLogLevel, bool shouldCreateDirectory)
         {
-            string expected =
-                    "Warn WWW" + Environment.NewLine +
-                    "Error EEE" + Environment.NewLine +
-                    "Fatal FFF" + Environment.NewLine +
-                    "Trace TTT" + Environment.NewLine +
-                    "Debug DDD" + Environment.NewLine +
-                    "Info III" + Environment.NewLine;
-
-            // Store off the previous log file
-            string previousLogFile = InternalLogger.LogFile;
-
             var tempPath = Path.GetTempPath();
             var tempFileName = Path.GetRandomFileName();
             var randomSubDirectory = Path.Combine(tempPath, Path.GetRandomFileName());
             string tempFile = Path.Combine(randomSubDirectory, tempFileName);
 
-            InternalLogger.LogLevel = LogLevel.Trace;
+            InternalLogger.LogLevel = LogLevel.FromString(rawLogLevel);
             InternalLogger.IncludeTimestamp = false;
 
+            if (Directory.Exists(randomSubDirectory))
+            {
+                Directory.Delete(randomSubDirectory);
+            }
             Assert.False(Directory.Exists(randomSubDirectory));
 
             // Set the log file, which will only create the needed directories
             InternalLogger.LogFile = tempFile;
 
-            Assert.True(Directory.Exists(randomSubDirectory));
+            Assert.Equal(Directory.Exists(randomSubDirectory), shouldCreateDirectory);
 
             try
             {
                 Assert.False(File.Exists(tempFile));
 
-                // Invoke Log(LogLevel, string) for every log level.
-                InternalLogger.Log(LogLevel.Warn, "WWW");
-                InternalLogger.Log(LogLevel.Error, "EEE");
-                InternalLogger.Log(LogLevel.Fatal, "FFF");
-                InternalLogger.Log(LogLevel.Trace, "TTT");
-                InternalLogger.Log(LogLevel.Debug, "DDD");
-                InternalLogger.Log(LogLevel.Info, "III");
+                InternalLogger.Log(LogLevel.FromString(rawLogLevel), "File and Directory created.");
 
-                AssertFileContents(tempFile, expected, Encoding.UTF8);
-                Assert.True(File.Exists(tempFile));
+                Assert.Equal(File.Exists(tempFile), shouldCreateDirectory);
             }
             finally
             {
-                // Reset LogFile to the previous value
-                InternalLogger.LogFile = previousLogFile;
-
                 if (File.Exists(tempFile))
                 {
                     File.Delete(tempFile);
@@ -495,9 +509,6 @@ namespace NLog.UnitTests.Common
             }
             finally
             {
-                // Reset LogFile to the previous value
-                InternalLogger.LogFile = previousLogFile;
-
                 if (File.Exists(tempFileName))
                 {
                     File.Delete(tempFileName);

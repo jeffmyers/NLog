@@ -178,6 +178,7 @@ namespace NLog.Targets.Wrappers
         {
             base.InitializeTarget();
             this.RequestQueue.Clear();
+            InternalLogger.Trace("AsyncWrapper '{0}': start timer", Name);
             this.lazyWriterTimer = new Timer(this.ProcessPendingEvents, null, Timeout.Infinite, Timeout.Infinite);
             this.StartLazyWriterTimer();
         }
@@ -212,7 +213,7 @@ namespace NLog.Targets.Wrappers
         }
 
         /// <summary>
-        /// Starts the lazy writer thread.
+        /// Stops the lazy writer thread.
         /// </summary>
         protected virtual void StopLazyWriterThread()
         {
@@ -244,6 +245,7 @@ namespace NLog.Targets.Wrappers
 
         private void ProcessPendingEvents(object state)
         {
+            InternalLogger.Trace("AsyncWrapper '{0}': ProcessPendingEvents", Name);
             AsyncContinuation[] continuations;
             lock (this.continuationQueueLock)
             {
@@ -255,14 +257,21 @@ namespace NLog.Targets.Wrappers
 
             try
             {
+
+                if (this.WrappedTarget == null)
+                {
+                    InternalLogger.Error("AsyncWrapper '{0}': WrappedTarget is NULL", Name);
+                    return;
+                }
+
                 foreach (var continuation in continuations)
                 {
                     int count = this.BatchSize;
                     if (continuation != null)
                     {
                         count = this.RequestQueue.RequestCount;
-                        InternalLogger.Trace("Flushing {0} events.", count);
                     }
+                    InternalLogger.Trace("AsyncWrapper '{0}': Flushing {1} events.", Name, count);
 
                     if (this.RequestQueue.RequestCount == 0)
                     {
@@ -288,13 +297,13 @@ namespace NLog.Targets.Wrappers
             }
             catch (Exception exception)
             {
-                InternalLogger.Error(exception, "Error in lazy writer timer procedure.");
+                InternalLogger.Error(exception, "AsyncWrapper '{0}': Error in lazy writer timer procedure.", Name);
 
                 if (exception.MustBeRethrown())
                 {
                     throw;
                 }
-                
+
             }
             finally
             {

@@ -31,8 +31,6 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-
-
 namespace NLog.Config
 {
     using System;
@@ -71,6 +69,8 @@ namespace NLog.Config
 
         private string originalFileName;
 
+        private LogFactory logFactory = null;
+
         private ConfigurationItemFactory ConfigurationItemFactory
         {
             get { return ConfigurationItemFactory.Default; }
@@ -85,12 +85,17 @@ namespace NLog.Config
         /// </summary>
         /// <param name="fileName">Configuration file to be read.</param>
         public XmlLoggingConfiguration(string fileName)
-        {
-            using (XmlReader reader = XmlReader.Create(fileName))
-            {
-                this.Initialize(reader, fileName, false);
-            }
-        }
+            : this(fileName, LogManager.LogFactory)
+        { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
+        /// </summary>
+        /// <param name="fileName">Configuration file to be read.</param>
+        /// <param name="logFactory">The <see cref="LogFactory" /> to which to apply any applicable configuration values.</param>
+        public XmlLoggingConfiguration(string fileName, LogFactory logFactory)
+            : this(fileName, false, logFactory)
+        { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
@@ -98,11 +103,49 @@ namespace NLog.Config
         /// <param name="fileName">Configuration file to be read.</param>
         /// <param name="ignoreErrors">Ignore any errors during configuration.</param>
         public XmlLoggingConfiguration(string fileName, bool ignoreErrors)
+            : this(fileName, ignoreErrors, LogManager.LogFactory)
+        { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
+        /// </summary>
+        /// <param name="fileName">Configuration file to be read.</param>
+        /// <param name="ignoreErrors">Ignore any errors during configuration.</param>
+        /// <param name="logFactory">The <see cref="LogFactory" /> to which to apply any applicable configuration values.</param>
+        public XmlLoggingConfiguration(string fileName, bool ignoreErrors, LogFactory logFactory)
         {
-            using (XmlReader reader = XmlReader.Create(fileName))
+            this.logFactory = logFactory;
+
+            using (XmlReader reader = CreateFileReader(fileName))
             {
                 this.Initialize(reader, fileName, ignoreErrors);
             }
+        }
+
+        /// <summary>
+        /// Create XML reader for (xml config) file.
+        /// </summary>
+        /// <param name="fileName">filepath</param>
+        /// <returns>reader or <c>null</c> if filename is empty.</returns>
+        private static XmlReader CreateFileReader(string fileName)
+        {
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                fileName = fileName.Trim();
+#if __ANDROID__
+                //suport loading config from special assets folder in nlog.config
+                const string assetsPrefix = "assets/";
+                if (fileName.StartsWith(assetsPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    //remove prefix
+                    fileName = fileName.Substring(assetsPrefix.Length);
+                    Stream stream = Android.App.Application.Context.Assets.Open(fileName);
+                    return XmlReader.Create(stream);
+                }
+#endif
+                return XmlReader.Create(fileName);
+            }
+            return null;
         }
 
         /// <summary>
@@ -111,9 +154,18 @@ namespace NLog.Config
         /// <param name="reader"><see cref="XmlReader"/> containing the configuration section.</param>
         /// <param name="fileName">Name of the file that contains the element (to be used as a base for including other files).</param>
         public XmlLoggingConfiguration(XmlReader reader, string fileName)
-        {
-            this.Initialize(reader, fileName, false);
-        }
+            : this(reader, fileName, LogManager.LogFactory)
+        { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
+        /// </summary>
+        /// <param name="reader"><see cref="XmlReader"/> containing the configuration section.</param>
+        /// <param name="fileName">Name of the file that contains the element (to be used as a base for including other files).</param>
+        /// <param name="logFactory">The <see cref="LogFactory" /> to which to apply any applicable configuration values.</param>
+        public XmlLoggingConfiguration(XmlReader reader, string fileName, LogFactory logFactory)
+            : this(reader, fileName, false, logFactory)
+        { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
@@ -122,7 +174,19 @@ namespace NLog.Config
         /// <param name="fileName">Name of the file that contains the element (to be used as a base for including other files).</param>
         /// <param name="ignoreErrors">Ignore any errors during configuration.</param>
         public XmlLoggingConfiguration(XmlReader reader, string fileName, bool ignoreErrors)
+            : this(reader, fileName, ignoreErrors, LogManager.LogFactory)
+        { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="XmlLoggingConfiguration" /> class.
+        /// </summary>
+        /// <param name="reader"><see cref="XmlReader"/> containing the configuration section.</param>
+        /// <param name="fileName">Name of the file that contains the element (to be used as a base for including other files).</param>
+        /// <param name="ignoreErrors">Ignore any errors during configuration.</param>
+        /// <param name="logFactory">The <see cref="LogFactory" /> to which to apply any applicable configuration values.</param>
+        public XmlLoggingConfiguration(XmlReader reader, string fileName, bool ignoreErrors, LogFactory logFactory)
         {
+            this.logFactory = logFactory;
             this.Initialize(reader, fileName, ignoreErrors);
         }
 
@@ -132,8 +196,10 @@ namespace NLog.Config
         /// </summary>
         /// <param name="element">The XML element.</param>
         /// <param name="fileName">Name of the XML file.</param>
-		internal XmlLoggingConfiguration(XmlElement element, string fileName)
+        internal XmlLoggingConfiguration(XmlElement element, string fileName)
         {
+            logFactory = LogManager.LogFactory;
+
             using (var stringReader = new StringReader(element.OuterXml))
             {
                 XmlReader reader = XmlReader.Create(stringReader);
@@ -181,7 +247,7 @@ namespace NLog.Config
         /// Did the <see cref="Initialize"/> Succeeded? <c>true</c>= success, <c>false</c>= error, <c>null</c> = initialize not started yet.
         /// </summary>
         public bool? InitializeSucceeded { get; private set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether all of the configuration files
         /// should be watched for changes and reloaded automatically when changed.
@@ -338,7 +404,7 @@ namespace NLog.Config
                         throw configurationException;
                     }
                 }
-              
+
             }
         }
 
@@ -447,13 +513,14 @@ namespace NLog.Config
             bool autoReload = nlogElement.GetOptionalBooleanAttribute("autoReload", autoReloadDefault);
             if (filePath != null)
                 this.fileMustAutoReloadLookup[GetFileLookupKey(filePath)] = autoReload;
-            
-            LogManager.ThrowExceptions = nlogElement.GetOptionalBooleanAttribute("throwExceptions", LogManager.ThrowExceptions);
+
+            logFactory.ThrowExceptions = nlogElement.GetOptionalBooleanAttribute("throwExceptions", logFactory.ThrowExceptions);
+            LogManager.ThrowConfigExceptions = nlogElement.GetOptionalBooleanAttribute("throwConfigExceptions", LogManager.ThrowConfigExceptions);
             InternalLogger.LogToConsole = nlogElement.GetOptionalBooleanAttribute("internalLogToConsole", InternalLogger.LogToConsole);
             InternalLogger.LogToConsoleError = nlogElement.GetOptionalBooleanAttribute("internalLogToConsoleError", InternalLogger.LogToConsoleError);
             InternalLogger.LogFile = nlogElement.GetOptionalAttribute("internalLogFile", InternalLogger.LogFile);
             InternalLogger.LogLevel = LogLevel.FromString(nlogElement.GetOptionalAttribute("internalLogLevel", InternalLogger.LogLevel.Name));
-            LogManager.GlobalThreshold = LogLevel.FromString(nlogElement.GetOptionalAttribute("globalThreshold", LogManager.GlobalThreshold.Name));
+            logFactory.GlobalThreshold = LogLevel.FromString(nlogElement.GetOptionalAttribute("globalThreshold", logFactory.GlobalThreshold.Name));
 
             var children = nlogElement.Children.ToList();
 
